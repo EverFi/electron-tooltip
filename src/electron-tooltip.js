@@ -4,6 +4,7 @@ module.exports = ((params = {}) => {
     const config = Object.assign({
         offset: '0',
         position: 'top',
+        delay: 0,
         width: 'auto',
         style: {}
     }, params)
@@ -39,36 +40,34 @@ module.exports = ((params = {}) => {
         tooltipWin.destroy()
         tooltipWin = null
     }
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+            tooltipWin.webContents.send('set-styling', config.style)
+            const tooltips = document.querySelectorAll('[data-tooltip]');
+            Array.prototype.forEach.call(tooltips, tooltip => {
+                tooltip.addEventListener('mouseenter', e => {
+                    const dimensions = e.target.getBoundingClientRect()
+                    const localConfig = {
+                        offset: e.target.getAttribute('data-tooltip-offset') || config.offset,
+                        width: e.target.getAttribute('data-tooltip-width') || config.width,
+                        position: e.target.getAttribute('data-tooltip-position') || config.position
+                    }
+                    let content = e.target.getAttribute('data-tooltip')
+                    if (typeof config.customContent === "function")
+                                        content = config.customContent(e.target, content)
 
-    tooltipWin.webContents.on('did-finish-load', () => {
-
-        tooltipWin.webContents.send('set-styling', config.style)
-
-        const tooltips = document.querySelectorAll('[data-tooltip]')
-        Array.prototype.forEach.call(tooltips, tooltip => {
-            tooltip.addEventListener('mouseenter', e => {
-                const dimensions = e.target.getBoundingClientRect()
-                const localConfig = {
-                    offset: e.target.getAttribute('data-tooltip-offset') || config.offset,
-                    width: e.target.getAttribute('data-tooltip-width') || config.width,
-                    position: e.target.getAttribute('data-tooltip-position') || config.position
-                }
-                let content = e.target.getAttribute('data-tooltip')
-                if (typeof config.customContent === "function")
-									content = config.customContent(e.target, content)
-
-                tooltipWin.webContents.send('set-content', {
-                    config: localConfig,
-                    content: content,
-                    elmDimensions: dimensions,
-                    originalWinBounds: win.getContentBounds()
+                    tooltipWin.webContents.send('set-content', {
+                        config: localConfig,
+                        content: content,
+                        elmDimensions: dimensions,
+                        originalWinBounds: win.getContentBounds()
+                    })
                 })
-            })
 
-            tooltip.addEventListener('mouseleave', e => {
-                tooltipWin.webContents.send('reset-content')
+                tooltip.addEventListener('mouseleave', e => {
+                    tooltipWin.webContents.send('reset-content')
+                });
             })
-        })
+        }, config.delay)
     })
-
 })
